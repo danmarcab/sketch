@@ -10,9 +10,9 @@ defmodule GraphTest do
     node_c = %Node{id: "c", data: :node_c_data}
 
     graph = Graph.new
-    |> Graph.connect(node_a, node_b)
-    |> Graph.connect_bi(node_b, node_c)
-    |> Graph.connect(node_c, node_a)
+    |> Graph.connect(node_a, node_b, :edge_a_b_data)
+    |> Graph.connect_bi(node_b, node_c, :edge_b_c_data)
+    |> Graph.connect(node_c, node_a, :edge_c_a_data)
 
     {:ok, graph: graph, node_a: node_a, node_b: node_b, node_c: node_c}
   end
@@ -35,14 +35,30 @@ defmodule GraphTest do
   end
 
   test "can get outbound connected nodes", %{graph: graph, node_a: node_a, node_b: node_b, node_c: node_c} do
-    assert Graph.outbound(graph, node_a) == [node_b]
-    assert Graph.outbound(graph, node_b) == [node_c]
-    assert Graph.outbound(graph, node_c) == [node_a, node_b]
+    assert Graph.outbound_ids(graph, node_a) == ["b"]
+    assert Graph.outbound_ids(graph, node_b) == ["c"]
+    assert Graph.outbound_ids(graph, node_c) == ["a", "b"]
+
+    assert Graph.outbound_nodes(graph, node_a) == [node_b]
+    assert Graph.outbound_nodes(graph, node_b) == [node_c]
+    assert Graph.outbound_nodes(graph, node_c) == [node_a, node_b]
+
+    assert Graph.outbound(graph, node_a) == %{"b" => :edge_a_b_data}
+    assert Graph.outbound(graph, node_b) == %{"c" => :edge_b_c_data}
+    assert Graph.outbound(graph, node_c) == %{"a" => :edge_c_a_data, "b" => :edge_b_c_data}
   end
 
   test "can get inbound connected nodes", %{graph: graph, node_a: node_a, node_b: node_b, node_c: node_c} do
-    assert Graph.inbound(graph, node_a) == [node_c]
-    assert Graph.inbound(graph, node_b) == [node_a, node_c]
-    assert Graph.inbound(graph, node_c) == [node_b]
+    assert Graph.inbound_ids(graph, node_a) == ["c"]
+    assert Graph.inbound_ids(graph, node_b) == ["a", "c"]
+    assert Graph.inbound_ids(graph, node_c) == ["b"]
+
+    assert Graph.inbound_nodes(graph, node_a) == [node_c]
+    assert Graph.inbound_nodes(graph, node_b) == [node_a, node_c]
+    assert Graph.inbound_nodes(graph, node_c) == [node_b]
+
+    assert Graph.inbound(graph, node_a) == %{"c" => :edge_c_a_data}
+    assert Graph.inbound(graph, node_b) == %{"a" => :edge_a_b_data, "c" => :edge_b_c_data}
+    assert Graph.inbound(graph, node_c) == %{"b" => :edge_b_c_data}
   end
 end
