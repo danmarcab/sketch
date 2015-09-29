@@ -1,91 +1,285 @@
 defmodule Sketch.Graph do
-  defstruct nodes: %{}, inbound: %{}, outbound: %{}
+  @moduledoc """
+  Provides functions to model graph-like structures.
+  """
 
-  alias Sketch.Node
+  defstruct nodes: %{}, in_edges: %{}, out_edges: %{}
 
+  @doc """
+  Creates an empty graph
+
+  ## Examples
+
+      iex> Sketch.Graph.new
+      ...> |> Sketch.Graph.nodes
+      []
+  """
   def new, do: %__MODULE__{}
 
-  def put_node(%__MODULE__{nodes: nodes} = graph, %Node{id: id} = node) do
-    %{graph | nodes: Map.put(nodes, id, node)}
+  @doc """
+  Adds/Updates a node in the graph
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.put_node("a")
+      iex>  g |> Sketch.Graph.nodes
+      ["a"]
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.put_node("a", :data)
+      iex>  g |> Sketch.Graph.nodes(data: true)
+      %{"a" => :data}
+      iex> g
+      ...> |> Sketch.Graph.put_node("a", :new_data)
+      ...> |> Sketch.Graph.nodes(data: true)
+      %{"a" => :new_data}
+  """
+  def put_node(%__MODULE__{nodes: nodes} = graph, node_id, node_data \\ nil) do
+    %{graph | nodes: Map.put(nodes, node_id, node_data)}
   end
 
-  def add_node(%__MODULE__{} = graph, %Node{} = node) do
-    if has_node?(graph, node), do: graph, else: put_node(graph, node)
+  @doc """
+  Adds/Updates a list of nodes in the graph
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.put_nodes(["a", "b", "c"])
+      iex>  g |> Sketch.Graph.nodes
+      ["a", "b", "c"]
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.put_nodes([{"a", :a_data}, {"b", :b_data}])
+      iex>  g |> Sketch.Graph.nodes(data: true)
+      %{"a" => :a_data, "b" => :b_data}
+      iex> g
+      ...> |> Sketch.Graph.put_nodes([{"a", :a_new_data}, {"b", :b_new_data}])
+      ...> |> Sketch.Graph.nodes(data: true)
+      %{"a" => :a_new_data, "b" => :b_new_data}
+  """
+  def put_nodes(%__MODULE__{} = graph, nodes) do
+    nodes
+    |> Enum.reduce(graph, fn
+      {node_id, node_data}, g -> put_node(g, node_id, node_data)
+      node_id, g              -> put_node(g, node_id)
+    end)
   end
 
-  def has_node?(%__MODULE__{nodes: nodes}, %Node{id: node_id}) do
+  @doc """
+  Adds a node in the graph only if it doesn't exist yet
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_node("a")
+      iex>  g |> Sketch.Graph.nodes
+      ["a"]
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_node("a", :data)
+      iex>  g |> Sketch.Graph.nodes(data: true)
+      %{"a" => :data}
+      iex> g
+      ...> |> Sketch.Graph.add_node("a", :new_data)
+      ...> |> Sketch.Graph.nodes(data: true)
+      %{"a" => :data}
+  """
+  def add_node(%__MODULE__{} = graph, node_id, node_data \\ nil) do
+    if has_node?(graph, node_id), do: graph, else: put_node(graph, node_id, node_data)
+  end
+
+  @doc """
+  Adds a list of nodes in the graph only if they don't exist yet
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_nodes(["a", "b", "c"])
+      iex>  g |> Sketch.Graph.nodes
+      ["a", "b", "c"]
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_nodes([{"a", :a_data}, {"b", :b_data}])
+      iex>  g |> Sketch.Graph.nodes(data: true)
+      %{"a" => :a_data, "b" => :b_data}
+      iex> g
+      ...> |> Sketch.Graph.add_nodes([{"a", :a_new_data}, {"b", :b_new_data}])
+      ...> |> Sketch.Graph.nodes(data: true)
+      %{"a" => :a_data, "b" => :b_data}
+  """
+  def add_nodes(%__MODULE__{} = graph, nodes) do
+    nodes
+    |> Enum.reduce(graph, fn
+      {node_id, node_data}, g -> add_node(g, node_id, node_data)
+      node_id, g              -> add_node(g, node_id)
+    end)
+  end
+
+  @doc """
+  Checks if a node is part of the graph
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_node("a")
+      iex>  g |> Sketch.Graph.has_node?("a")
+      true
+      iex>  g |> Sketch.Graph.has_node?("b")
+      false
+  """
+  def has_node?(%__MODULE__{nodes: nodes}, node_id) do
     nodes
     |> Map.has_key?(node_id)
   end
 
-  def get_nodes(%__MODULE__{nodes: nodes}, node_ids) when is_list(node_ids) do
-    Map.take(nodes, node_ids)
-    |> Map.values
+  @doc """
+  Get list of nodes of the graph
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_node("a")
+      iex>  g |> Sketch.Graph.nodes
+      ["a"]
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_node("a", :data)
+      iex>  g |> Sketch.Graph.nodes(data: true)
+      %{"a" => :data}
+  """
+  def nodes(%__MODULE__{nodes: nodes}) do
+    nodes |> Map.keys
   end
 
-  def get_nodes(%__MODULE__{nodes: nodes}, %{} = node_ids) do
-    Map.take(nodes, node_ids |> Map.keys)
-    |> Map.values
+  def nodes(%__MODULE__{nodes: nodes}, data: true) do
+    nodes
   end
 
-  def connect(graph, %Node{id: a} = node_a, %Node{id: b} = node_b, edge_data \\ nil) do
+  @doc """
+  Add an edge to the graph. If any of the nodes are not in the graph,
+  it adds them
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_edge("a", "b")
+      iex>  g |> Sketch.Graph.nodes
+      ["a", "b"]
+      iex>  g |> Sketch.Graph.edges
+      [{"a", "b"}]
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_edge({"a", :a_data}, {"b", :b_data}, :edge_data)
+      iex>  g |> Sketch.Graph.nodes(data: true)
+      %{"a" => :a_data, "b" => :b_data}
+      iex>  g |> Sketch.Graph.edges(data: true)
+      %{{"a", "b"} => :edge_data}
+  """
+  def add_edge(%__MODULE__{} = graph, node_a, node_b, edge_data \\ nil) do
+    {id_a, data_a} = extract(node_a)
+    {id_b, data_b} = extract(node_b)
+
     graph
-    |> add_node(node_a)
-    |> add_node(node_b)
-    |> add_outbound(a, b, edge_data)
-    |> add_inbound(b, a, edge_data)
+    |> add_node(id_a, data_a)
+    |> add_node(id_b, data_b)
+    |> add_out_edge(id_a, id_b, edge_data)
+    |> add_in_edge(id_b, id_a, edge_data)
   end
 
-  def connect_bi(graph, %Node{id: a} = node_a, %Node{id: b} = node_b, edge_data \\ nil) do
-    graph
-    |> connect(node_a, node_b, edge_data)
-    |> add_outbound(b, a, edge_data)
-    |> add_inbound(a, b, edge_data)
+  @doc """
+  Add a list of edges to the graph. If any of the nodes are not in the graph,
+  it adds them
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_edges([{"a", "b"}, {"b", "c"}])
+      iex>  g |> Sketch.Graph.nodes
+      ["a", "b", "c"]
+      iex>  g |> Sketch.Graph.edges
+      [{"a", "b"}, {"b", "c"}]
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_edges([
+      ...>   {{"a", :a_data}, {"b", :b_data}, :a_b_data},
+      ...>   {"b", {"c", :c_data}, :b_c_data}
+      ...> ])
+      iex>  g |> Sketch.Graph.nodes(data: true)
+      %{"a" => :a_data, "b" => :b_data, "c" => :c_data}
+      iex>  g |> Sketch.Graph.edges(data: true)
+      %{{"a", "b"} => :a_b_data, {"b", "c"} => :b_c_data}
+  """
+  def add_edges(%__MODULE__{} = graph, edges) do
+    edges
+    |> Enum.reduce(graph, fn
+      ({node_a, node_b}, g) -> add_edge(g, node_a, node_b)
+      ({node_a, node_b, data}, g) -> add_edge(g, node_a, node_b, data)
+    end)
   end
 
-  def are_connected?(%__MODULE__{outbound: outbound}, %Node{id: a}, %Node{id: b}) do
-    outbound
-    |> Map.get(a, %{})
-    |> Map.has_key?(b)
+  @doc """
+  Test if two nodes are connected.
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_edges([{"a", "b"}, {"b", "c"}])
+      iex>  g |> Sketch.Graph.are_connected?("a", "b")
+      true
+      iex>  g |> Sketch.Graph.are_connected?("b", "a")
+      false
+      iex>  g |> Sketch.Graph.are_connected?("a", "c")
+      false
+  """
+  def are_connected?(%__MODULE__{out_edges: out_edges}, id_a, id_b) do
+    out_edges
+    |> Map.get(id_a, %{})
+    |> Map.has_key?(id_b)
   end
 
-  def outbound(%__MODULE__{nodes: nodes, outbound: outbound}, %Node{id: a}) do
-    outbound
-    |> Map.get(a, %{})
+  @doc """
+  Get list of edges of the graph.
+
+  ## Examples
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_edge("a", "b")
+      iex>  g |> Sketch.Graph.nodes
+      ["a", "b"]
+      iex>  g |> Sketch.Graph.edges
+      [{"a", "b"}]
+
+      iex> g = Sketch.Graph.new
+      ...> |> Sketch.Graph.add_edge({"a", :a_data}, {"b", :b_data}, :edge_data)
+      iex>  g |> Sketch.Graph.nodes(data: true)
+      %{"a" => :a_data, "b" => :b_data}
+      iex>  g |> Sketch.Graph.edges(data: true)
+      %{{"a", "b"} => :edge_data}
+  """
+  def edges(%__MODULE__{out_edges: edges} = graph, data: true) do
+    edges
+    |> Enum.reduce([], fn {from_id, adjacent}, list ->
+      list ++ (for {to_id, data} <- adjacent, do: {{from_id, to_id}, data})
+    end)
+    |> Enum.into(%{})
   end
 
-  def outbound_ids(%__MODULE__{} = graph, %Node{} = node) do
-    outbound(graph, node)
+  def edges(%__MODULE__{out_edges: edges} = graph) do
+    edges(graph, data: true)
     |> Map.keys
   end
 
-  def outbound_nodes(%__MODULE__{} = graph, %Node{} = node) do
-    graph
-    |> get_nodes(outbound(graph, node))
+  defp add_out_edge(%__MODULE__{out_edges: out_edges} = graph, id_a, id_b, edge_data) do
+    a_out_edges = Map.get(out_edges, id_a, %{}) |> Map.put(id_b, edge_data)
+    %{graph | out_edges: Map.put(out_edges, id_a, a_out_edges)}
   end
 
-  def inbound(%__MODULE__{nodes: nodes, inbound: inbound}, %Node{id: a}) do
-    inbound
-    |> Map.get(a, %{})
+  defp add_in_edge(%__MODULE__{in_edges: in_edges} = graph, id_a, id_b, edge_data) do
+    a_in_edges = Map.get(in_edges, id_a, %{}) |> Map.put(id_b, edge_data)
+    %{graph | in_edges: Map.put(in_edges, id_a, a_in_edges)}
   end
 
-  def inbound_ids(%__MODULE__{} = graph, %Node{} = node) do
-    inbound(graph, node)
-    |> Map.keys
-  end
-
-  def inbound_nodes(%__MODULE__{} = graph, %Node{} = node) do
-    graph
-    |> get_nodes(inbound(graph, node))
-  end
-
-  def add_inbound(%__MODULE__{inbound: inbound} = graph, a, b, edge_data \\ nil) do
-    a_inbound = Map.get(inbound, a, %{}) |> Map.put(b, edge_data)
-    %{graph | inbound: Map.put(inbound, a, a_inbound)}
-  end
-
-  def add_outbound(%__MODULE__{outbound: outbound} = graph, a, b, edge_data \\ nil) do
-    a_outbound = Map.get(outbound, a, %{}) |> Map.put(b, edge_data)
-    %{graph | outbound: Map.put(outbound, a, a_outbound)}
-  end
+  defp extract({id, data}), do: {id, data}
+  defp extract(id), do: {id, nil}
 end
